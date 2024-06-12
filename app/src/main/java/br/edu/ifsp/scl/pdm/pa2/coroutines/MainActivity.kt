@@ -21,36 +21,39 @@ class MainActivity : AppCompatActivity() {
             val random = Random(System.currentTimeMillis())
             val SLEEP_LIMIT = 3000L
 
-//            var upperText = "Upper before sleep"
-//            var lowerText = "Lower before sleep"
-
-            GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main) {
-                val upperTextDeferred = async {
+            GlobalScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+                Log.v(
+                    getString(R.string.app_name),
+                    "Top Coroutine thread ${Thread.currentThread().name}, " +
+                            "Job: ${coroutineContext[Job]}"
+                )
+                val upper = sleep("Upper", random.nextLong(SLEEP_LIMIT))
+                withContext(Dispatchers.Main + Job()) {
                     Log.v(
                         getString(R.string.app_name),
-                        "Upper async coroutine thread ${Thread.currentThread().name}, Job: ${coroutineContext[Job]}"
+                        "But this code is executing in thread ${Thread.currentThread().name}, Job: ${coroutineContext[Job]}"
                     )
-                    sleep("Upper", random.nextLong(SLEEP_LIMIT))
+                    amb.upperTv.text = upper
                 }
-                val lowerTextDeferred = async {
+                Log.v(
+                    getString(R.string.app_name),
+                    "Top Coroutine thread after main ${Thread.currentThread().name}, " +
+                            "Job: ${coroutineContext[Job]}"
+                )
+                launch(Dispatchers.IO) {
                     Log.v(
                         getString(R.string.app_name),
                         "Lower async coroutine thread ${Thread.currentThread().name}, Job: ${coroutineContext[Job]}"
                     )
+                    sleep("Lower", random.nextLong(SLEEP_LIMIT)).let {
+                        runOnUiThread {
+                            amb.lowerTv.text = it
+                        }
+                    }
 
-                    sleep("Lower", random.nextLong(SLEEP_LIMIT))
+                    Log.v(getString(R.string.app_name), "Lower coroutine completed")
                 }
-                upperTextDeferred.await().let {
-                    amb.upperTv.text = it
-                }
-
-                amb.lowerTv.text = lowerTextDeferred.await()
-
-                Log.v(
-                    getString(R.string.app_name),
-                    "Coroutine thread ${Thread.currentThread().name}, " +
-                            "Job: ${coroutineContext[Job]}"
-                )
+                Log.v(getString(R.string.app_name), "Top Coroutine completed")
             }
             Log.v(
                 getString(R.string.app_name),
