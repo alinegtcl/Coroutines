@@ -21,31 +21,44 @@ class MainActivity : AppCompatActivity() {
             val random = Random(System.currentTimeMillis())
             val SLEEP_LIMIT = 3000L
 
-            var upperText = "Upper before sleep"
-            var lowerText = "Lower before sleep"
+//            var upperText = "Upper before sleep"
+//            var lowerText = "Lower before sleep"
 
             GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main) {
-                upperText = sleep("Upper", random.nextLong(SLEEP_LIMIT))
+                val upperTextDeferred = async {
+                    Log.v(
+                        getString(R.string.app_name),
+                        "Upper async coroutine thread ${Thread.currentThread().name}, Job: ${coroutineContext[Job]}"
+                    )
+                    sleep("Upper", random.nextLong(SLEEP_LIMIT))
+                }
+                val lowerTextDeferred = async {
+                    Log.v(
+                        getString(R.string.app_name),
+                        "Lower async coroutine thread ${Thread.currentThread().name}, Job: ${coroutineContext[Job]}"
+                    )
+
+                    sleep("Lower", random.nextLong(SLEEP_LIMIT))
+                }
+                upperTextDeferred.await().let {
+                    amb.upperTv.text = it
+                }
+
+                amb.lowerTv.text = lowerTextDeferred.await()
+
                 Log.v(
                     getString(R.string.app_name),
                     "Coroutine thread ${Thread.currentThread().name}, " +
                             "Job: ${coroutineContext[Job]}"
                 )
-                amb.upperTv.text = upperText
             }
-
-            GlobalScope.launch(Dispatchers.Unconfined) {
-                lowerText = sleep("Lower", random.nextLong(SLEEP_LIMIT))
-                Log.v(
-                    getString(R.string.app_name),
-                    "Coroutine thread ${Thread.currentThread().name}, Job: ${coroutineContext[Job]}"
-                )
-                runOnUiThread {
-                    amb.lowerTv.text = lowerText
-                }
-            }
+            Log.v(
+                getString(R.string.app_name),
+                "Main thread ${Thread.currentThread().name}"
+            )
         }
     }
+
     private suspend fun sleep(name: String, time: Long): String {
         kotlinx.coroutines.delay(time)
         return "$name slept for $time ms."
